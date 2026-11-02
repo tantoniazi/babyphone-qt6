@@ -1,0 +1,22 @@
+# Build directory
+build/
+*.o
+*.moc
+*.qm
+Makefile
+*.user
+*.autosave
+.qmake.stash
+
+# Qt Creator
+*.creator
+*.creator.*
+
+# Temporary
+*.tmp
+*.bak
+*~
+
+# OS
+.DS_Store
+Thumbs.db
