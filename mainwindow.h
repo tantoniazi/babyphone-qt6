@@ -21,6 +21,7 @@ private:
     void showFirstRunInfo();
     void activateMonitor();
     void deactivateMonitor();
+    void onStatusChanged(QQuickView::Status status);
 
 signals:
     void requestExit();
@@ -41,6 +42,7 @@ private:
     bool itsIsScreenOff = false;
     QTimer itsActivationDelayTimer;
     Babyphone *itsBabyphone = nullptr;
+    bool guiInitialized = false;
 };
 
 #endif // MAINWINDOW_H

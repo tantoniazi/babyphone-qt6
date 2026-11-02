@@ -1,14 +1,14 @@
 #include "mainwindow.h"
-#include <QQuickView>
 #include <QQmlEngine>
 #include <QQmlContext>
+#include <QQuickItem>
+#include <QMetaObject>
 #include <QDebug>
 #include <QDesktopServices>
 
 MainWindow::MainWindow()
 {
     itsSettings = new Settings(this);
-    setupGui();
 
     itsActivationDelayTimer.setSingleShot(true);
     connect(&itsActivationDelayTimer, &QTimer::timeout,
@@ -23,6 +23,11 @@ MainWindow::MainWindow()
             this, &MainWindow::bringWindowToFront);
     connect(itsBabyphone, &Babyphone::notificationError,
             this, &MainWindow::showNotificationError);
+
+    // Load QML asynchronously, initialize GUI when ready
+    connect(this, &QQuickView::statusChanged,
+            this, &MainWindow::onStatusChanged);
+    setSource(QUrl(QStringLiteral("qrc:/main.qml")));
 }
 
 MainWindow::~MainWindow()
@@ -30,9 +35,16 @@ MainWindow::~MainWindow()
     itsSettings->Save();
 }
 
+void MainWindow::onStatusChanged(QQuickView::Status status)
+{
+    if (status != QQuickView::Ready || guiInitialized)
+        return;
+    guiInitialized = true;
+    setupGui();
+}
+
 void MainWindow::setupGui()
 {
-    setSource(QUrl(QStringLiteral("qrc:/main.qml")));
     connect(rootObject(), SIGNAL(requestExit()),
             this, SIGNAL(requestExit()));
 
@@ -103,7 +115,10 @@ void MainWindow::storeGuiSettings()
 
 void MainWindow::dataChanged()
 {
-    if (QObject *contact = rootObject()->findChild<QObject *>("contact")) {
+    QObject *root = rootObject();
+    if (!root)
+        return;
+    if (QObject *contact = root->findChild<QObject *>("contact")) {
         QString text = contact->property("text").toString();
         itsSettings->itsContact.SetNumber(text);
         contact->setProperty("text", itsSettings->itsContact.GetDisplayString());
@@ -112,7 +127,10 @@ void MainWindow::dataChanged()
 
 void MainWindow::changeState()
 {
-    if (QObject *mainPage = rootObject()->findChild<QObject *>("mainPage")) {
+    QObject *root = rootObject();
+    if (!root)
+        return;
+    if (QObject *mainPage = root->findChild<QObject *>("mainPage")) {
         Babyphone::State oldState = itsBabyphone->itsState;
         itsActivationDelayTimer.stop();
 
@@ -122,7 +140,7 @@ void MainWindow::changeState()
                 activateMonitor();
                 mainPage->setProperty("state", "WAITING");
             } else {
-                if (QObject *banner = rootObject()->findChild<QObject *>("banner")) {
+                if (QObject *banner = root->findChild<QObject *>("banner")) {
                     banner->setProperty("text",
                         tr("No valid parent's phone number set.\nPlease adjust the application settings."));
                     QMetaObject::invokeMethod(banner, "show");
@@ -159,9 +177,12 @@ void MainWindow::deactivateMonitor()
 
 void MainWindow::newCallStatus(bool finish, bool selfInitiated)
 {
+    QObject *root = rootObject();
+    if (!root)
+        return;
     if (finish && selfInitiated) {
         itsBabyphone->setState(Babyphone::STATE_WAITING);
-        if (QObject *mainPage = rootObject()->findChild<QObject *>("mainPage"))
+        if (QObject *mainPage = root->findChild<QObject *>("mainPage"))
             mainPage->setProperty("state", "WAITING");
         itsActivationDelayTimer.start(itsSettings->itsRecallTimer * 1000);
     }
@@ -169,30 +190,37 @@ void MainWindow::newCallStatus(bool finish, bool selfInitiated)
 
 void MainWindow::activationTimerExpired()
 {
+    QObject *root = rootObject();
+    if (!root)
+        return;
     itsBabyphone->setState(Babyphone::STATE_ON);
-    if (QObject *mainPage = rootObject()->findChild<QObject *>("mainPage"))
+    if (QObject *mainPage = root->findChild<QObject *>("mainPage"))
         mainPage->setProperty("state", "ON");
 }
 
 void MainWindow::bringWindowToFront()
 {
-    activateWindow();
-    raise();
+    requestActivate();
+    show();
 }
 
 void MainWindow::newAudioData(int counter, int value)
 {
-    if (!itsIsScreenOff) {
-        if (QObject *volume_graph = rootObject()->findChild<QObject *>("volume_graph"))
-            QMetaObject::invokeMethod(volume_graph, "addValue", Q_ARG(int, value));
-        if (QObject *duration_graph = rootObject()->findChild<QObject *>("duration_graph"))
-            QMetaObject::invokeMethod(duration_graph, "addValue", Q_ARG(int, counter));
-    }
+    QObject *root = rootObject();
+    if (!root || itsIsScreenOff)
+        return;
+    if (QObject *volume_graph = root->findChild<QObject *>("volume_graph"))
+        QMetaObject::invokeMethod(volume_graph, "addValue", Q_ARG(int, value));
+    if (QObject *duration_graph = root->findChild<QObject *>("duration_graph"))
+        QMetaObject::invokeMethod(duration_graph, "addValue", Q_ARG(int, counter));
 }
 
 void MainWindow::showNotificationError()
 {
-    if (QObject *banner = rootObject()->findChild<QObject *>("banner")) {
+    QObject *root = rootObject();
+    if (!root)
+        return;
+    if (QObject *banner = root->findChild<QObject *>("banner")) {
         QString errorMsg = itsSettings->itsUserNotifyScript.isEmpty()
             ? tr("Could not establish phone call. Please check network coverage and the phone number settings.")
             : QString(tr("Could not start user script %1.")).arg(itsSettings->itsUserNotifyScript);
@@ -203,7 +231,10 @@ void MainWindow::showNotificationError()
 
 void MainWindow::showFirstRunInfo()
 {
-    if (QObject *banner = rootObject()->findChild<QObject *>("banner")) {
+    QObject *root = rootObject();
+    if (!root)
+        return;
+    if (QObject *banner = root->findChild<QObject *>("banner")) {
         banner->setProperty("text",
             tr("Babyphone performs audio monitoring even when the device is locked. Battery usage will be higher."));
         banner->setProperty("timerShowTime", 15000);

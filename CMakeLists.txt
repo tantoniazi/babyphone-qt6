@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5 REQUIRED COMPONENTS Core Widgets Quick DBus Multimedia)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Quick DBus)
 
 add_executable(babyphone
     main.cpp
@@ -24,11 +24,10 @@ add_executable(babyphone
 )
 
 target_link_libraries(babyphone PRIVATE
-    Qt5::Core
-    Qt5::Widgets
-    Qt5::Quick
-    Qt5::DBus
-    Qt5::Multimedia
+    Qt6::Core
+    Qt6::Widgets
+    Qt6::Quick
+    Qt6::DBus
 )
 
 target_compile_definitions(babyphone PRIVATE BABYPHONE_DESKTOP_BUILD)

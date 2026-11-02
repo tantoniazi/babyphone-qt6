@@ -2,8 +2,8 @@
 #define AUDIOMONITOR_H
 
 #include <QObject>
-#include <QAudioInput>
 #include <QIODevice>
+#include <QTimer>
 #include "settings.h"
 
 class AudioMonitor : public QIODevice
@@ -30,7 +30,9 @@ public:
 private:
     const static int COUNTER_SCALE_FACTOR = 5;
     const Settings * const itsSettings;
-    QAudioInput *itsDevice = nullptr;
+    QTimer *simTimer = nullptr;
+    int simulatedVolume = 0;
+    int simulatedCounter = 0;
 };
 
 #endif // AUDIOMONITOR_H
